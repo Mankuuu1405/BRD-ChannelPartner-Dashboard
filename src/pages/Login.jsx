@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { AuthAPI } from "../services/DashboardService";
 import "./Login.css";
 
 export default function Login() {
@@ -36,9 +37,28 @@ export default function Login() {
     }
     setLoading(true);
     setErrors({});
-    await new Promise(r => setTimeout(r, 900));
-    login(form.email);
-    navigate(from, { replace: true });
+    
+    try {
+      // Call backend API
+      const response = await AuthAPI.signIn({
+        email: form.email,
+        password: form.password,
+        rememeber_me: form.remember,
+        sign_in: true,
+        create_account: false
+      });
+      
+      // On success, log in the user
+      login(form.email);
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error("Login error:", error);
+      setErrors({ general: error.message || "Login failed. Please try again." });
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const f = (key, val) => {
@@ -125,6 +145,13 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
+
+            {/* General Error */}
+            {errors.general && (
+              <div className="lg-alert-error" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fee", border: "1px solid #fcc", borderRadius: "6px", color: "#c33" }}>
+                ⚠ {errors.general}
+              </div>
+            )}
 
             {/* Email */}
             <div className={`lg-field ${errors.email ? "has-error" : ""}`}>

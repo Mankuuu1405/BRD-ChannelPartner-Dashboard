@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { AccountsAPI } from "../services/DashboardService";
 import "./Signup.css";
 
 export default function Signup() {
@@ -37,9 +38,42 @@ export default function Signup() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    login(form.email, form.name);
-    navigate("/dashboard/dashboard", { replace: true });
+    setErrors({});
+    
+    try {
+      // Map role to backend format
+      const roleMap = {
+        "DSA Manager": "DSA_MANAGER",
+        "Broker Admin": "BROKER_ADMIN",
+        "Lead Manager": "LEAD_MANAGER",
+        "Finance Team": "FINANCE_TEAM",
+        "Other": "OTHER"
+      };
+      
+      // Call backend API
+      const response = await AccountsAPI.register({
+        full_name: form.name,
+        email: form.email,
+        phone: form.phone || "",
+        password: form.password,
+        confirm_password: form.confirm,
+        role: roleMap[form.role] || "OTHER",
+        agree_terms: form.agree,
+        create_account: true,
+        sign_in: false
+      });
+      
+      // On success, log in the user and redirect
+      login(form.email, form.name);
+      navigate("/dashboard/dashboard", { replace: true });
+    } catch (error) {
+      console.error("Signup error:", error);
+      setErrors({ general: error.message || "Registration failed. Please try again." });
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const f = (key, val) => {
@@ -119,6 +153,13 @@ export default function Signup() {
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
+
+            {/* General Error */}
+            {errors.general && (
+              <div className="su-alert-error" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fee", border: "1px solid #fcc", borderRadius: "6px", color: "#c33" }}>
+                ⚠ {errors.general}
+              </div>
+            )}
 
             {/* Name */}
             <div className={`su-field ${errors.name ? "has-error" : ""}`}>
